@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entity Management Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            color: #fff;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>实验参与管理</h1>
+
+        <!-- Query Single Entity -->
+        <div class="section">
+            <h2>查询参与信息</h2>
+            <input type="text" id="query-id" placeholder="Enter ID">
+            <button id="query-btn">查询</button>
+            <div id="query-result" class="result"></div>
+        </div>
+
+        <!-- Update Entity -->
+        <div class="section">
+            <h2>更新参与信息</h2>
+            <input type="text" id="update-id" placeholder="Enter ID">
+            <input type="text" id="update-condition" placeholder="Enter New Condition (optional)">
+            <input type="text" id="update-status" placeholder="Enter New Status (optional)">
+            <button id="update-btn">更新</button>
+            <div id="update-result" class="result"></div>
+        </div>
+
+        <!-- Query All Entities and Count -->
+        <div class="section">
+            <h2>获取全部参与信息</h2>
+            <button id="query-all-btn">获取</button>
+            <div id="query-all-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // API URLs for the functions
+        const queryEntityApiUrl = "https://randomnumberfunctionapp.azurewebsites.net/api/query_entity_by_id?code=3TPOnhk_0Y_XJ9OprkZMjOfOSlPb-i7X-V7Uh3o2Ysj5AzFuj6A7Dg%3D%3D";
+        const updateEntityApiUrl = "https://randomnumberfunctionapp.azurewebsites.net/api/update_entity_by_id?code=iVFrFTasSQkCLUXWK0TLoTCjKMP17dtTfFxofHpGig1kAzFuE_xRpg%3D%3D";
+        const queryAllEntitiesApiUrl = "https://randomnumberfunctionapp.azurewebsites.net/api/query_all_and_count_conditions?code=Jx4MfHR7smdUauRmVlC-soJghxdOtBtfC-DYj3NbR9jCAzFu3GzXSw%3D%3D";
+
+        // Query Single Entity
+        document.getElementById('query-btn').addEventListener('click', async () => {
+            const id = document.getElementById('query-id').value;
+            const resultDiv = document.getElementById('query-result');
+            resultDiv.innerHTML = "";
+
+            if (!id) {
+                resultDiv.innerHTML = '<span class="error">Please enter a valid ID.</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${queryEntityApiUrl}&id=${encodeURIComponent(id)}`);
+                if (!response.ok) throw new Error("Entity not found or error occurred.");
+                const data = await response.json();
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        });
+
+        // Update Entity
+        document.getElementById('update-btn').addEventListener('click', async () => {
+            const id = document.getElementById('update-id').value;
+            const condition = document.getElementById('update-condition').value;
+            const status = document.getElementById('update-status').value;
+            const resultDiv = document.getElementById('update-result');
+            resultDiv.innerHTML = "";
+
+            if (!id) {
+                resultDiv.innerHTML = '<span class="error">Please enter a valid ID.</span>';
+                return;
+            }
+
+            const url = `${updateEntityApiUrl}&id=${encodeURIComponent(id)}${
+                condition ? `&condition=${encodeURIComponent(condition)}` : ""
+            }${status ? `&status=${encodeURIComponent(status)}` : ""}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Error updating entity.");
+                const data = await response.json();
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+            }
+        });
+
+        // Query All Entities and Count
+        document.getElementById('query-all-btn').addEventListener('click', async () => {
+        const resultDiv = document.getElementById('query-all-result');
+        resultDiv.innerHTML = ""; // 清空结果
+
+        try {
+            const response = await fetch(queryAllEntitiesApiUrl);
+            if (!response.ok) throw new Error("Error querying all entities.");
+            const data = await response.json();
+
+            // 显示条件统计
+            const conditionCountsHtml = `
+                <h3>Condition Counts:</h3>
+                <p>Condition 1: ${data.condition1_count}</p>
+                <p>Condition 2: ${data.condition2_count}</p>
+            `;
+
+            // 格式化所有实体数据，只显示 PartitionKey, Condition 和 Status
+            const entitiesHtml = `
+                <h3>All Entities:</h3>
+                <ul>
+                    ${data.entities
+                        .filter(entity => entity.PartitionKey !== "GlobalSettings") // 过滤掉 GlobalSettings
+                        .map(entity => `
+                            <li>
+                                ID: ${entity.PartitionKey}, 
+                                Condition: ${entity.Condition}, 
+                                Status: ${entity.Status}
+                            </li>
+                        `)
+                        .join("")}
+                </ul>
+            `;
+
+            resultDiv.innerHTML = conditionCountsHtml + entitiesHtml;
+        } catch (error) {
+            resultDiv.innerHTML = `<span class="error">Error: ${error.message}</span>`;
+        }
+    });
+    </script>
+</body>
+</html>
